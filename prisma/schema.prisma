@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  email String  @unique
+  name  String?
+  password String
+
+  pets Pet[]
+}
+
+model Pet {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  foto           String?   // URL da imagem no Cloudinary
+  public_idfoto  String?   // ID para futura edição/exclusão no Cloudinary
+  nome           String
+  especie        String    // gato ou cachorro
+  porte          String    // grande, pequeno ou médio
+  sexo           String    // macho ou fêmea
+  descricao      String    // texto de descrição livre
+  contato        String?
+  
+  adotado        Boolean   @default(false)
+  aprovado  Boolean  @default(true)
+  tutelado       Boolean   @default(true)
+  
+  // Soft Delete: Armazena a data que foi "deletado". Se for null, o item está ativo.
+  deleted_at     DateTime?
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relacionamento com o Usuário que cadastrou
+  owner          User      @relation(fields: [ownerId], references: [id])
+  ownerId        String    @db.ObjectId
+}

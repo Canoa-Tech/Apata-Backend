@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APATA - Painel Administrativo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; color: #333; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        section { margin-bottom: 40px; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { background: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
+        button:hover { background: #2980b9; }
+        .btn-renovar { background: #2ecc71; margin-top: 5px; }
+        .delete-btn { background: #e74c3c; padding: 8px 15px; width: auto; font-size: 13px; }
+        .pet-card { display: flex; align-items: center; background: #fafafa; border: 1px solid #eee; padding: 15px; margin-top: 15px; border-radius: 10px; }
+        .pet-card img { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; margin-right: 20px; border: 2px solid #3498db; }
+        .pet-info { flex-grow: 1; }
+        #status-msg { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; display: none; z-index: 1000; font-weight: bold; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #e8f4fd; color: #3498db; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="status-msg"></div>
+
+<div class="container">
+    <h2>🐾 APATA - Sistema de Gestão</h2>
+
+    <section>
+        <h3>1. Autenticação</h3>
+        <p>Status: <span id="tokenStatus" style="color: red; font-weight: bold;">Desconectado</span></p>
+        <input type="email" id="loginEmail" placeholder="Seu e-mail">
+        <input type="password" id="loginPass" placeholder="Sua senha">
+        <button onclick="login()">Entrar</button>
+        <button class="btn-renovar" onclick="renovarToken()">Renovar Sessão</button>
+    </section>
+
+    <section>
+        <h3>2. Cadastrar Novo Pet</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <label>Nome</label>
+                <input type="text" id="pNome" placeholder="Ex: Mel">
+            </div>
+            <div>
+                <label>Espécie</label>
+                <select id="pEspecie">
+                    <option value="cachorro">Cachorro</option>
+                    <option value="gato">Gato</option>
+                </select>
+            </div>
+            <div>
+                <label>Porte</label>
+                <select id="pPorte">
+                    <option value="pequeno">Pequeno</option>
+                    <option value="médio">Médio</option>
+                    <option value="grande">Grande</option>
+                </select>
+            </div>
+            <div>
+                <label>Sexo</label>
+                <select id="pSexo">
+                    <option value="macho">Macho</option>
+                    <option value="fêmea">Fêmea</option>
+                </select>
+            </div>
+        </div>
+
+        <label>Descrição Curta</label>
+        <textarea id="pDesc" rows="2" placeholder="Descreva o pet..."></textarea>
+
+        <label>Foto do Animal</label>
+        <input type="file" id="pFoto" accept="image/*">
+
+        <button onclick="criarPet()" style="background: #2c3e50;">🚀 Publicar Agora</button>
+    </section>
+
+    <section>
+        <h3>3. Mural de Animais</h3>
+        <input type="text" id="buscaNome" placeholder="🔍 Pesquisar por nome..." onkeyup="listarPets()">
+        <div id="listaPets"></div>
+    </section>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:3000';
+    let token = localStorage.getItem('token') || '';
+
+    function msg(texto, cor = '#2ecc71') {
+        const div = document.getElementById('status-msg');
+        div.innerText = texto; div.style.background = cor; div.style.display = 'block';
+        setTimeout(() => div.style.display = 'none', 3000);
+    }
+
+    async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPass').value;
+        try {
+            const res = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if(res.ok) {
+                token = data.token;
+                localStorage.setItem('token', token);
+                atualizarInterfaceLogado();
+                msg('Bem-vindo de volta!');
+                listarPets();
+            } else { alert(data.error); }
+        } catch (e) { msg('Erro de conexão', '#e74c3c'); }
+    }
+
+    function atualizarInterfaceLogado() {
+        const status = document.getElementById('tokenStatus');
+        status.innerText = '✅ Conectado';
+        status.style.color = 'green';
+    }
+
+    async function renovarToken() {
+        if(!token) return;
+        const res = await fetch(`${API_URL}/atualizatoken`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if(res.ok) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            msg('Sessão renovada!');
+        }
+    }
+
+    async function criarPet() {
+        if(!token) return alert('Faça login primeiro!');
+        
+        const formData = new FormData();
+        formData.append('nome', document.getElementById('pNome').value);
+        formData.append('especie', document.getElementById('pEspecie').value);
+        formData.append('porte', document.getElementById('pPorte').value);
+        formData.append('sexo', document.getElementById('pSexo').value);
+        formData.append('descricao', document.getElementById('pDesc').value);
+        
+        // CAMPOS QUE FAZEM APARECER NA HORA
+        formData.append('aprovado', true); 
+        formData.append('tutelado', true);
+        formData.append('adotado', false);
+
+        const arquivo = document.getElementById('pFoto').files[0];
+        if(arquivo) formData.append('file', arquivo);
+
+        try {
+            const res = await fetch(`${API_URL}/pets`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            
+            if(res.ok) {
+                msg('Pet publicado com sucesso!');
+                limparForm();
+                listarPets(); // ATUALIZA A LISTA NA HORA
+            } else {
+                const err = await res.json();
+                alert('Erro ao salvar: ' + (err.error || err.details));
+            }
+        } catch (e) { msg('Erro no servidor', '#e74c3c'); }
+    }
+
+    function limparForm() {
+        document.getElementById('pNome').value = '';
+        document.getElementById('pDesc').value = '';
+        document.getElementById('pFoto').value = '';
+    }
+
+    async function listarPets() {
+        const busca = document.getElementById('buscaNome').value;
+        try {
+            const res = await fetch(`${API_URL}/pets?nome=${busca}`);
+            const pets = await res.json();
+            const lista = document.getElementById('listaPets');
+            lista.innerHTML = '';
+
+            if (pets.length === 0) {
+                lista.innerHTML = '<p style="text-align:center; padding:20px;">Nenhum animal cadastrado ainda.</p>';
+                return;
+            }
+
+            pets.forEach(p => {
+                lista.innerHTML += `
+                    <div class="pet-card">
+                        <img src="${p.foto || 'https://via.placeholder.com/150'}" alt="Foto">
+                        <div class="pet-info">
+                            <span class="status-badge">${p.especie.toUpperCase()}</span>
+                            <br><strong>${p.nome}</strong> (${p.sexo})
+                            <br><small>Porte: ${p.porte}</small>
+                            <p style="margin: 8px 0; font-size: 13px; color: #666;">${p.descricao}</p>
+                            <button class="delete-btn" onclick="deletarPet('${p.id}')">Excluir</button>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (e) { console.error('Erro ao listar'); }
+    }
+
+    async function deletarPet(id) {
+        if(!confirm('Deseja excluir este pet?')) return;
+        const res = await fetch(`${API_URL}/pets/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if(res.ok) {
+            msg('Pet removido com sucesso!', '#e74c3c');
+            listarPets();
+        }
+    }
+
+    // Inicialização
+    if(token) atualizarInterfaceLogado();
+    listarPets();
+</script>
+</body>
+</html>
