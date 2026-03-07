@@ -7,16 +7,16 @@ export default {
   // CREATE - Com trava de limite de 5 pets
   async criar(req, res) {
     try {
-      // 1. Trava de Segurança: Limite de 5 itens ativos por usuário
-      const qtd = await prisma.pet.count({
-        where: { ownerId: req.userId, deleted_at: null },
-      });
+      // // 1. Trava de Segurança: Limite de 5 itens ativos por usuário
+      // const qtd = await prisma.pet.count({
+      //   where: { ownerId: req.userId, deleted_at: null },
+      // });
 
-      if (qtd >= 5) {
-        return res
-          .status(403)
-          .json({ error: "Limite de 5 animais por conta atingido" });
-      }
+      // if (qtd >= 5) {
+      //   return res
+      //     .status(403)
+      //     .json({ error: "Limite de 5 animais por conta atingido" });
+      // }
 
       const { nome, especie, porte, sexo, descricao, tutelado, contato } = req.body;
       let fotoUrl = null;
@@ -99,6 +99,30 @@ export default {
       res.status(500).json({ error: "Erro ao buscar detalhes" });
     }
   },
+
+
+
+//BUSCA POR NOME
+async listarnome(req, res) {
+  try {
+    const { nome } = req.query;
+
+    const pets = await prisma.pet.findMany({
+      where: {
+        deleted_at: null,
+        ...(nome && {
+          nome: { contains: nome, mode: "insensitive" }
+        })
+      }
+    });
+
+    res.status(200).json(pets);
+
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar animais" });
+  }
+}
+,
 
   // UPDATE - Com troca de imagem e limpeza no Cloudinary
   async atualizar(req, res) {

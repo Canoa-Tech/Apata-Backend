@@ -7,6 +7,7 @@ const router = express.Router()
 
 // Rotas de Pets
 router.get('/pets', PetController.listar)
+router.get('/pets/busca', PetController.listarnome) 
 router.get('/pets/:id', PetController.listarId)
 
 // Rota de Cadastro (Unificada com Autenticação e Upload)
